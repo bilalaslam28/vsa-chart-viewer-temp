@@ -1,14 +1,24 @@
 <!doctype html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TradeBot live trades — 2026-09-01</title>
 <script src="https://unpkg.com/lightweight-charts@5.0.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
   body { font-family: sans-serif; margin: 0; padding: 16px; background: #131722; color: #d1d4dc; }
-  #chart { width: 100%; height: 600px; }
-  #controls { margin-bottom: 12px; }
+  #chart { width: 100%; height: min(600px, 62vh); }
+  /* touch-action: none only while Draw is on -- otherwise the browser's own
+     scroll/zoom swallows the touchmove events the drawing tools need. */
+  #chart.drawing { touch-action: none; }
+  #controls { margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  #controls select, #controls button {
+    font-size: 16px; min-height: 40px; padding: 6px 12px; border-radius: 6px;
+    background: #1e222d; color: #d1d4dc; border: 1px solid #2a2e39;
+  }
+  #controls button.on { background: #4a90e2; color: #fff; border-color: #4a90e2; }
+  #measureResult { flex-basis: 100%; font-size: 14px; min-height: 18px; }
+  #hint { flex-basis: 100%; opacity: 0.6; font-size: 12px; }
   #title { margin: 0 0 8px; font-size: 16px; }
   a { color: #4a90e2; }
   #chartWrap { position: relative; }
@@ -26,8 +36,10 @@
     <select id="chartPicker"></select>
     <button id="clearLines">Clear lines</button>
     <button id="measureToggle">Tool: Line</button>
+    <button id="drawToggle">Draw: off</button>
     <span id="measureResult"></span>
-    <span style="opacity:0.6; font-size:12px;"> — hold Shift + drag to draw</span>
+    <span id="hint">Mouse: hold Shift and drag on the chart.
+      Touch: tap "Draw: off" to turn it on, then drag one finger (chart panning pauses while Draw is on).</span>
   </div>
   <h3 id="title"></h3>
   <div id="chartWrap">
@@ -107,6 +119,7 @@ function render(data) {
   chart.timeScale().fitContent();
   clearLines(); // manual lines don't carry meaning across a different ticker's price scale
   endDrag();
+  if (drawMode) drawBtn.click(); // leave Draw off on a switch, pan/zoom restored
   measureResult.textContent = '';
 }
 
@@ -183,39 +196,86 @@ function updateRangeDrag(price) {
   measureResult.textContent = `Range: ${sign}${diff.toFixed(4)} (${sign}${pct.toFixed(2)}%)`;
 }
 
-// Shift+drag draws; plain drag is left alone so the chart's native pan/zoom still
-// works. Capture phase + stopPropagation so LWC's own mousedown handler (which does
-// the panning) never sees the event when Shift is held -- otherwise both fire and
-// fight each other.
+// Two ways in, one drag engine: a mouse user holds Shift and drags; a touch user
+// turns Draw on (a phone has no Shift key) and drags one finger. Both tools (Line and
+// Range) are driven by the same begin/update/finish below, so neither input can end up
+// supporting a tool the other doesn't (failure class 2 -- the touch path was the
+// missing sibling until 2026-09-22).
 const chartEl = document.getElementById('chart');
-chartEl.addEventListener('mousedown', e => {
-  if (!e.shiftKey) return;
-  e.stopPropagation();
-  e.preventDefault();
-  const price = priceAtPoint(hoverPoint);
-  if (price === null) return;
+
+function priceAtClientY(clientY) {
+  // The chart container's top edge IS the top of the price pane, so a page-space y
+  // maps onto the series the same way the crosshair's own point.y does.
+  const rect = chartEl.getBoundingClientRect();
+  return candleSeries.coordinateToPrice(clientY - rect.top);
+}
+
+function beginDrag(price) {
+  if (price === null || price === undefined) return;
   isDragging = true;
   if (rangeTool) startRangeDrag(price); else startLineDrag(price);
-}, true);
-window.addEventListener('mouseup', () => {
+}
+
+function updateDrag(price) {
+  if (price === null || price === undefined || !dragPreviewLine) return;
+  if (rangeTool) updateRangeDrag(price);
+  else dragPreviewLine.applyOptions({ price, title: price.toFixed(4) });
+}
+
+function finishDrag() {
   if (!isDragging) return;
   if (rangeTool && dragAnchorPrice !== null) {
-    measureResult.textContent += ' — drag new range to remeasure';
+    measureResult.textContent += ' — drag a new range to remeasure';
   }
   endDrag();
+}
+
+// Draw mode: while on, the chart's own pan/zoom is switched off and a plain drag
+// (finger or mouse) draws instead. Turning it off hands pan/zoom straight back.
+let drawMode = false;
+const drawBtn = document.getElementById('drawToggle');
+drawBtn.addEventListener('click', () => {
+  drawMode = !drawMode;
+  endDrag();
+  drawBtn.textContent = `Draw: ${drawMode ? 'ON' : 'off'}`;
+  drawBtn.classList.toggle('on', drawMode);
+  chartEl.classList.toggle('drawing', drawMode);
+  chart.applyOptions({ handleScroll: !drawMode, handleScale: !drawMode });
 });
+
+// Capture phase + stopPropagation so LWC's own mousedown/touchstart handlers (the
+// ones that pan the chart) never see the event while we're drawing -- otherwise both
+// fire and fight each other. passive:false is required to preventDefault a touch.
+chartEl.addEventListener('mousedown', e => {
+  if (!e.shiftKey && !drawMode) return;
+  e.stopPropagation();
+  e.preventDefault();
+  beginDrag(priceAtClientY(e.clientY));
+}, true);
+window.addEventListener('mouseup', finishDrag);
+
+chartEl.addEventListener('touchstart', e => {
+  if (!drawMode) return;
+  if (e.touches.length > 1) { endDrag(); return; }  // two fingers: not a draw
+  e.stopPropagation();
+  e.preventDefault();
+  beginDrag(priceAtClientY(e.touches[0].clientY));
+}, { capture: true, passive: false });
+chartEl.addEventListener('touchmove', e => {
+  if (!isDragging) return;
+  if (e.touches.length > 1) { endDrag(); return; }
+  e.stopPropagation();
+  e.preventDefault();
+  updateDrag(priceAtClientY(e.touches[0].clientY));
+}, { capture: true, passive: false });
+chartEl.addEventListener('touchend', finishDrag, { capture: true });
+chartEl.addEventListener('touchcancel', () => endDrag(), { capture: true });
 
 const tooltip = document.getElementById('tooltip');
 chart.subscribeCrosshairMove(param => {
   hoverPoint = param.point || null;
 
-  if (isDragging) {
-    const price = priceAtPoint(hoverPoint);
-    if (price !== null && dragPreviewLine) {
-      if (rangeTool) updateRangeDrag(price);
-      else dragPreviewLine.applyOptions({ price, title: price.toFixed(4) });
-    }
-  }
+  if (isDragging) updateDrag(priceAtPoint(hoverPoint));
 
   if (!param.time || !param.point) {
     tooltip.style.display = 'none';
@@ -253,8 +313,8 @@ picker.addEventListener('change', () => render(DATA[picker.value]));
 if (picker.options.length) { picker.selectedIndex = 0; render(DATA[picker.value]); }
 
 new ResizeObserver(entries => {
-  const { width } = entries[0].contentRect;
-  chart.applyOptions({ width });
+  const { width, height } = entries[0].contentRect;
+  chart.applyOptions({ width, height });
 }).observe(document.getElementById('chart'));
 </script>
 </body>

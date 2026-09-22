@@ -1,0 +1,321 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TradeBot live trades — 2026-07-28</title>
+<script src="https://unpkg.com/lightweight-charts@5.0.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  body { font-family: sans-serif; margin: 0; padding: 16px; background: #131722; color: #d1d4dc; }
+  #chart { width: 100%; height: min(600px, 62vh); }
+  /* touch-action: none only while Draw is on -- otherwise the browser's own
+     scroll/zoom swallows the touchmove events the drawing tools need. */
+  #chart.drawing { touch-action: none; }
+  #controls { margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  #controls select, #controls button {
+    font-size: 16px; min-height: 40px; padding: 6px 12px; border-radius: 6px;
+    background: #1e222d; color: #d1d4dc; border: 1px solid #2a2e39;
+  }
+  #controls button.on { background: #4a90e2; color: #fff; border-color: #4a90e2; }
+  #measureResult { flex-basis: 100%; font-size: 14px; min-height: 18px; }
+  #hint { flex-basis: 100%; opacity: 0.6; font-size: 12px; }
+  #title { margin: 0 0 8px; font-size: 16px; }
+  a { color: #4a90e2; }
+  #chartWrap { position: relative; }
+  #tooltip {
+    position: absolute; top: 8px; left: 8px; z-index: 2;
+    background: rgba(19, 23, 34, 0.85); border: 1px solid #2a2e39;
+    border-radius: 4px; padding: 6px 10px; font-size: 12px; pointer-events: none;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+  <p style="margin:0 0 8px;font-size:14px;"><a href="../index.html">&larr; All days</a></p>
+  <div id="controls">
+    <select id="chartPicker"></select>
+    <button id="clearLines">Clear lines</button>
+    <button id="measureToggle">Tool: Line</button>
+    <button id="drawToggle">Draw: off</button>
+    <span id="measureResult"></span>
+    <span id="hint">Mouse: hold Shift and drag on the chart.
+      Touch: tap "Draw: off" to turn it on, then drag one finger (chart panning pauses while Draw is on).</span>
+  </div>
+  <h3 id="title"></h3>
+  <div id="chartWrap">
+    <div id="tooltip"></div>
+    <div id="chart"></div>
+  </div>
+  <p style="font-size:12px; opacity:0.6;">
+    Charts powered by <a href="https://www.tradingview.com/" target="_blank">TradingView</a> Lightweight Charts™.
+  </p>
+
+<script>
+const DATA = {"POLA_2026-07-28": {"symbol": "POLA", "date": "2026-07-28", "candles": [{"time": 1785229200, "open": 2.15, "high": 2.381, "low": 2.04, "close": 2.15}, {"time": 1785229260, "open": 2.1574, "high": 2.33, "low": 2.04, "close": 2.18}, {"time": 1785229320, "open": 2.18, "high": 2.37, "low": 1.97, "close": 2.06}, {"time": 1785229380, "open": 2.06, "high": 2.06, "low": 2.02, "close": 2.03}, {"time": 1785229440, "open": 2.03, "high": 2.04, "low": 1.96, "close": 1.99}, {"time": 1785229500, "open": 1.99, "high": 2.02, "low": 1.98, "close": 1.99}, {"time": 1785229560, "open": 1.995, "high": 2.0, "low": 1.92, "close": 1.97}, {"time": 1785229620, "open": 1.97, "high": 2.37, "low": 1.96, "close": 2.01}, {"time": 1785229680, "open": 2.01, "high": 2.03, "low": 1.975, "close": 2.0}, {"time": 1785229740, "open": 2.0, "high": 2.01, "low": 1.98, "close": 2.005}, {"time": 1785229800, "open": 2.0, "high": 2.04, "low": 2.0, "close": 2.04}, {"time": 1785229860, "open": 2.04, "high": 2.0699, "low": 2.0, "close": 2.04}, {"time": 1785229920, "open": 2.04, "high": 2.11, "low": 2.03, "close": 2.1}, {"time": 1785229980, "open": 2.1, "high": 2.11, "low": 2.0, "close": 2.03}, {"time": 1785230040, "open": 2.03, "high": 2.04, "low": 2.01, "close": 2.04}, {"time": 1785230100, "open": 2.04, "high": 2.05, "low": 2.03, "close": 2.04}, {"time": 1785230160, "open": 2.035, "high": 2.04, "low": 1.995, "close": 2.0}, {"time": 1785230220, "open": 2.0, "high": 2.02, "low": 1.96, "close": 2.005}, {"time": 1785230280, "open": 1.995, "high": 2.03, "low": 1.995, "close": 2.01}, {"time": 1785230340, "open": 2.02, "high": 2.02, "low": 2.0, "close": 2.0099}, {"time": 1785230400, "open": 2.0099, "high": 2.01, "low": 1.95, "close": 1.96}, {"time": 1785230460, "open": 1.965, "high": 2.0, "low": 1.96, "close": 1.98}, {"time": 1785230520, "open": 1.98, "high": 2.0, "low": 1.98, "close": 2.0}, {"time": 1785230580, "open": 2.0, "high": 2.07, "low": 1.97, "close": 2.05}, {"time": 1785230640, "open": 2.05, "high": 2.0728, "low": 2.05, "close": 2.06}, {"time": 1785230700, "open": 2.06, "high": 2.06, "low": 2.02, "close": 2.03}, {"time": 1785230760, "open": 2.04, "high": 2.06, "low": 2.04, "close": 2.05}, {"time": 1785230820, "open": 2.05, "high": 2.05, "low": 2.02, "close": 2.04}, {"time": 1785230880, "open": 2.0428, "high": 2.05, "low": 2.03, "close": 2.05}, {"time": 1785230940, "open": 2.05, "high": 2.13, "low": 2.05, "close": 2.12}, {"time": 1785231000, "open": 2.11, "high": 2.12, "low": 2.04, "close": 2.06}, {"time": 1785231060, "open": 2.06, "high": 2.07, "low": 2.04, "close": 2.06}, {"time": 1785231120, "open": 2.05, "high": 2.0801, "low": 2.05, "close": 2.05}, {"time": 1785231180, "open": 2.06, "high": 2.07, "low": 2.04, "close": 2.05}, {"time": 1785231240, "open": 2.05, "high": 2.05, "low": 2.02, "close": 2.03}, {"time": 1785231300, "open": 2.02, "high": 2.04, "low": 2.02, "close": 2.02}, {"time": 1785231360, "open": 2.02, "high": 2.0401, "low": 2.02, "close": 2.04}, {"time": 1785231420, "open": 2.04, "high": 2.075, "low": 2.04, "close": 2.07}, {"time": 1785231480, "open": 2.07, "high": 2.07, "low": 2.06, "close": 2.07}, {"time": 1785231540, "open": 2.07, "high": 2.07, "low": 2.04, "close": 2.07}, {"time": 1785231600, "open": 2.07, "high": 2.09, "low": 2.05, "close": 2.0525}, {"time": 1785231660, "open": 2.06, "high": 2.06, "low": 2.05, "close": 2.05}, {"time": 1785231720, "open": 2.05, "high": 2.06, "low": 2.04, "close": 2.05}, {"time": 1785231780, "open": 2.05, "high": 2.05, "low": 2.04, "close": 2.05}, {"time": 1785231840, "open": 2.04, "high": 2.05, "low": 2.02, "close": 2.02}, {"time": 1785231900, "open": 2.02, "high": 2.03, "low": 1.99, "close": 2.0}, {"time": 1785231960, "open": 2.0, "high": 2.02, "low": 2.0, "close": 2.02}, {"time": 1785232020, "open": 2.01, "high": 2.025, "low": 2.01, "close": 2.025}, {"time": 1785232080, "open": 2.03, "high": 2.03, "low": 2.02, "close": 2.0228}, {"time": 1785232140, "open": 2.02, "high": 2.0201, "low": 1.99, "close": 2.0}, {"time": 1785232200, "open": 1.99, "high": 2.01, "low": 1.99, "close": 2.0}, {"time": 1785232260, "open": 1.99, "high": 2.0, "low": 1.98, "close": 1.99}, {"time": 1785232320, "open": 1.98, "high": 2.0, "low": 1.98, "close": 1.98}, {"time": 1785232380, "open": 1.97, "high": 2.0, "low": 1.96, "close": 1.99}, {"time": 1785232440, "open": 1.99, "high": 2.01, "low": 1.99, "close": 2.0099}, {"time": 1785232500, "open": 2.0, "high": 2.01, "low": 2.0, "close": 2.01}, {"time": 1785232560, "open": 2.01, "high": 2.01, "low": 2.0, "close": 2.01}, {"time": 1785232620, "open": 2.0, "high": 2.01, "low": 1.98, "close": 1.985}, {"time": 1785232680, "open": 1.99, "high": 1.99, "low": 1.97, "close": 1.99}, {"time": 1785232740, "open": 1.98, "high": 1.99, "low": 1.98, "close": 1.98}, {"time": 1785232800, "open": 1.99, "high": 2.0, "low": 1.99, "close": 1.99}, {"time": 1785232860, "open": 2.0, "high": 2.02, "low": 1.98, "close": 2.01}, {"time": 1785232920, "open": 2.02, "high": 2.03, "low": 2.0, "close": 2.01}, {"time": 1785232980, "open": 2.0, "high": 2.0001, "low": 1.99, "close": 2.0}, {"time": 1785233040, "open": 2.0, "high": 2.01, "low": 2.0, "close": 2.0}, {"time": 1785233100, "open": 2.01, "high": 2.01, "low": 2.0, "close": 2.01}, {"time": 1785233160, "open": 2.0, "high": 2.02, "low": 1.99, "close": 2.01}, {"time": 1785233220, "open": 2.02, "high": 2.02, "low": 2.01, "close": 2.01}, {"time": 1785233280, "open": 2.01, "high": 2.01, "low": 2.0, "close": 2.01}, {"time": 1785233340, "open": 2.01, "high": 2.02, "low": 2.01, "close": 2.01}, {"time": 1785233400, "open": 2.0102, "high": 2.0102, "low": 2.0, "close": 2.0}, {"time": 1785233460, "open": 2.0, "high": 2.01, "low": 1.99, "close": 1.99}, {"time": 1785233520, "open": 1.99, "high": 1.99, "low": 1.97, "close": 1.98}, {"time": 1785233580, "open": 1.98, "high": 1.99, "low": 1.98, "close": 1.98}, {"time": 1785233640, "open": 1.98, "high": 2.0, "low": 1.98, "close": 1.99}, {"time": 1785233700, "open": 1.99, "high": 1.99, "low": 1.98, "close": 1.98}, {"time": 1785233760, "open": 1.98, "high": 1.99, "low": 1.97, "close": 1.98}, {"time": 1785233820, "open": 1.97, "high": 2.02, "low": 1.97, "close": 2.0175}, {"time": 1785233880, "open": 2.01, "high": 2.02, "low": 2.0, "close": 2.01}, {"time": 1785233940, "open": 2.01, "high": 2.06, "low": 2.01, "close": 2.03}, {"time": 1785234000, "open": 2.03, "high": 2.07, "low": 2.01, "close": 2.06}, {"time": 1785234060, "open": 2.06, "high": 2.06, "low": 2.05, "close": 2.06}, {"time": 1785234120, "open": 2.06, "high": 2.06, "low": 2.03, "close": 2.04}, {"time": 1785234180, "open": 2.04, "high": 2.05, "low": 2.03, "close": 2.03}, {"time": 1785234240, "open": 2.03, "high": 2.04, "low": 2.03, "close": 2.0374}, {"time": 1785234300, "open": 2.03, "high": 2.04, "low": 2.03, "close": 2.03}, {"time": 1785234360, "open": 2.03, "high": 2.05, "low": 2.03, "close": 2.05}, {"time": 1785234420, "open": 2.05, "high": 2.07, "low": 2.05, "close": 2.0601}, {"time": 1785234480, "open": 2.07, "high": 2.09, "low": 2.06, "close": 2.06}, {"time": 1785234540, "open": 2.07, "high": 2.07, "low": 2.05, "close": 2.06}, {"time": 1785234600, "open": 2.065, "high": 2.065, "low": 2.05, "close": 2.0525}, {"time": 1785234660, "open": 2.05, "high": 2.06, "low": 2.03, "close": 2.03}, {"time": 1785234720, "open": 2.03, "high": 2.04, "low": 2.02, "close": 2.04}, {"time": 1785234780, "open": 2.04, "high": 2.07, "low": 2.04, "close": 2.06}, {"time": 1785234840, "open": 2.06, "high": 2.06, "low": 2.04, "close": 2.06}, {"time": 1785234900, "open": 2.0528, "high": 2.06, "low": 2.05, "close": 2.05}, {"time": 1785234960, "open": 2.05, "high": 2.05, "low": 2.03, "close": 2.03}, {"time": 1785235020, "open": 2.03, "high": 2.04, "low": 2.03, "close": 2.04}, {"time": 1785235080, "open": 2.03, "high": 2.0498, "low": 2.03, "close": 2.04}, {"time": 1785235140, "open": 2.04, "high": 2.04, "low": 2.03, "close": 2.03}, {"time": 1785235200, "open": 2.03, "high": 2.03, "low": 2.02, "close": 2.02}, {"time": 1785235260, "open": 2.02, "high": 2.03, "low": 2.02, "close": 2.03}, {"time": 1785235320, "open": 2.02, "high": 2.04, "low": 2.02, "close": 2.04}, {"time": 1785235380, "open": 2.04, "high": 2.0499, "low": 2.03, "close": 2.0499}, {"time": 1785235440, "open": 2.04, "high": 2.05, "low": 2.03, "close": 2.04}, {"time": 1785235500, "open": 2.04, "high": 2.04, "low": 2.03, "close": 2.03}, {"time": 1785235560, "open": 2.03, "high": 2.04, "low": 2.02, "close": 2.04}, {"time": 1785235620, "open": 2.0375, "high": 2.04, "low": 2.03, "close": 2.04}, {"time": 1785235680, "open": 2.03, "high": 2.03, "low": 2.0, "close": 2.01}, {"time": 1785235740, "open": 2.02, "high": 2.02, "low": 2.0, "close": 2.01}, {"time": 1785235800, "open": 2.01, "high": 2.01, "low": 2.0, "close": 2.01}, {"time": 1785235860, "open": 2.0, "high": 2.03, "low": 2.0, "close": 2.03}, {"time": 1785235920, "open": 2.03, "high": 2.03, "low": 2.02, "close": 2.03}, {"time": 1785235980, "open": 2.02, "high": 2.02, "low": 2.01, "close": 2.01}, {"time": 1785236040, "open": 2.01, "high": 2.0102, "low": 2.01, "close": 2.01}, {"time": 1785236100, "open": 2.01, "high": 2.03, "low": 2.01, "close": 2.03}, {"time": 1785236160, "open": 2.03, "high": 2.04, "low": 2.02, "close": 2.03}, {"time": 1785236220, "open": 2.04, "high": 2.04, "low": 2.03, "close": 2.04}, {"time": 1785236280, "open": 2.03, "high": 2.03, "low": 2.0274, "close": 2.0274}, {"time": 1785236340, "open": 2.03, "high": 2.03, "low": 2.02, "close": 2.02}, {"time": 1785236400, "open": 2.02, "high": 2.02, "low": 2.01, "close": 2.01}], "vwap": [{"time": 1785229200, "value": 2.15, "vs_vwap_pct": 0.0}, {"time": 1785229260, "value": 2.16706900384273, "vs_vwap_pct": 0.5967044027827724}, {"time": 1785229320, "value": 2.127618435346773, "vs_vwap_pct": 2.4619811420598925}, {"time": 1785229380, "value": 2.1201485092234877, "vs_vwap_pct": -2.836995095476463}, {"time": 1785229440, "value": 2.1076190939683808, "vs_vwap_pct": -3.682785669882787}, {"time": 1785229500, "value": 2.102381318418256, "vs_vwap_pct": -5.3454298434694545}, {"time": 1785229560, "value": 2.0935493483705914, "vs_vwap_pct": -4.707285665240811}, {"time": 1785229620, "value": 2.088837334279728, "vs_vwap_pct": -3.774220854153444}, {"time": 1785229680, "value": 2.084371841273103, "vs_vwap_pct": -3.568069756098708}, {"time": 1785229740, "value": 2.0829880519531985, "vs_vwap_pct": -3.7440470136192046}, {"time": 1785229800, "value": 2.082089677678621, "vs_vwap_pct": -2.0215112792618988}, {"time": 1785229860, "value": 2.0801585813988748, "vs_vwap_pct": -1.9305538413263041}, {"time": 1785229920, "value": 2.081109902932664, "vs_vwap_pct": 0.9076933919115299}, {"time": 1785229980, "value": 2.078158968975974, "vs_vwap_pct": 1.050979802319384}, {"time": 1785230040, "value": 2.0772122762394853, "vs_vwap_pct": -1.7914527400566471}, {"time": 1785230100, "value": 2.076615929776294, "vs_vwap_pct": -1.7632499708426352}, {"time": 1785230160, "value": 2.0744576370981953, "vs_vwap_pct": -1.9020700347195096}, {"time": 1785230220, "value": 2.0718552067190292, "vs_vwap_pct": -3.2268281346214645}, {"time": 1785230280, "value": 2.0714352183918416, "vs_vwap_pct": -2.965828612276713}, {"time": 1785230340, "value": 2.0709739943755623, "vs_vwap_pct": -2.461353668080796}, {"time": 1785230400, "value": 2.0683333796859924, "vs_vwap_pct": -2.8251431930602764}, {"time": 1785230460, "value": 2.0671062722783793, "vs_vwap_pct": -4.213923272670938}, {"time": 1785230520, "value": 2.066731303962577, "vs_vwap_pct": -3.2288330773638645}, {"time": 1785230580, "value": 2.0661520618083444, "vs_vwap_pct": -0.7817460344234272}, {"time": 1785230640, "value": 2.065991860662819, "vs_vwap_pct": -0.2900234399227866}, {"time": 1785230700, "value": 2.0654138448364634, "vs_vwap_pct": -0.2621191317177408}, {"time": 1785230760, "value": 2.0652754975008287, "vs_vwap_pct": -0.7396348583670143}, {"time": 1785230820, "value": 2.0651110270121547, "vs_vwap_pct": -0.7317295203259738}, {"time": 1785230880, "value": 2.065033963579951, "vs_vwap_pct": -0.7280250032250462}, {"time": 1785230940, "value": 2.067166176390371, "vs_vwap_pct": 2.555857589634426}, {"time": 1785231000, "value": 2.066942016010055, "vs_vwap_pct": 2.0831732896437134}, {"time": 1785231060, "value": 2.0668801165584725, "vs_vwap_pct": -0.3328744857214261}, {"time": 1785231120, "value": 2.066748217672202, "vs_vwap_pct": -0.8103656521386008}, {"time": 1785231180, "value": 2.066620714915804, "vs_vwap_pct": -0.32036429655518445}, {"time": 1785231240, "value": 2.0662365532079185, "vs_vwap_pct": -0.7858032122561571}, {"time": 1785231300, "value": 2.065902204566571, "vs_vwap_pct": -2.2218962962093096}, {"time": 1785231360, "value": 2.0657741093495154, "vs_vwap_pct": -1.247673171663059}, {"time": 1785231420, "value": 2.06579117740071, "vs_vwap_pct": 0.20373901512085812}, {"time": 1785231480, "value": 2.0658083636630997, "vs_vwap_pct": 0.20290538128461688}, {"time": 1785231540, "value": 2.065834541754688, "vs_vwap_pct": 0.20163561800906946}, {"time": 1785231600, "value": 2.0657248785043234, "vs_vwap_pct": 0.20695502775625257}, {"time": 1785231660, "value": 2.065658362283764, "vs_vwap_pct": -0.2739253686416959}, {"time": 1785231720, "value": 2.065628598695255, "vs_vwap_pct": -0.7566025521299841}, {"time": 1785231780, "value": 2.0655825859577064, "vs_vwap_pct": -0.754391814863297}, {"time": 1785231840, "value": 2.065317330748397, "vs_vwap_pct": -1.2258324845036201}, {"time": 1785231900, "value": 2.0644163357348044, "vs_vwap_pct": -2.1515202610036965}, {"time": 1785231960, "value": 2.064062017971991, "vs_vwap_pct": -2.134723549405905}, {"time": 1785232020, "value": 2.064014851542664, "vs_vwap_pct": -1.8902408339505985}, {"time": 1785232080, "value": 2.0639509451194726, "vs_vwap_pct": -1.6449492271003352}, {"time": 1785232140, "value": 2.063599509124323, "vs_vwap_pct": -2.1127892758040194}, {"time": 1785232200, "value": 2.063393618084321, "vs_vwap_pct": -3.0722988347311295}, {"time": 1785232260, "value": 2.062855253273997, "vs_vwap_pct": -3.5317675904970676}, {"time": 1785232320, "value": 2.062416342939137, "vs_vwap_pct": -3.9961059861310972}, {"time": 1785232380, "value": 2.0616077660573287, "vs_vwap_pct": -3.4733942719993327}, {"time": 1785232440, "value": 2.0614256392186157, "vs_vwap_pct": -2.499514813357345}, {"time": 1785232500, "value": 2.061319445294941, "vs_vwap_pct": -2.4896405752189605}, {"time": 1785232560, "value": 2.0612574816922438, "vs_vwap_pct": -2.48670930960856}, {"time": 1785232620, "value": 2.060890514414954, "vs_vwap_pct": -2.954572986243254}, {"time": 1785232680, "value": 2.060755792062458, "vs_vwap_pct": -3.4334874775066844}, {"time": 1785232740, "value": 2.0605799910373808, "vs_vwap_pct": -3.9105490390020483}, {"time": 1785232800, "value": 2.0604016541838424, "vs_vwap_pct": -3.416889810823297}, {"time": 1785232860, "value": 2.0597979001570366, "vs_vwap_pct": -2.4176109779139128}, {"time": 1785232920, "value": 2.059564784085478, "vs_vwap_pct": -1.9210264416637917}, {"time": 1785232980, "value": 2.0594136663263494, "vs_vwap_pct": -2.884979705526255}, {"time": 1785233040, "value": 2.059289425275656, "vs_vwap_pct": -2.8791205620705647}, {"time": 1785233100, "value": 2.059210475428069, "vs_vwap_pct": -2.3897739456594134}, {"time": 1785233160, "value": 2.0589578402081585, "vs_vwap_pct": -2.377797119109984}, {"time": 1785233220, "value": 2.058868175593661, "vs_vwap_pct": -1.8878418761537983}, {"time": 1785233280, "value": 2.0587833206472688, "vs_vwap_pct": -2.3695218509897296}, {"time": 1785233340, "value": 2.0586675468683366, "vs_vwap_pct": -2.364031382452711}, {"time": 1785233400, "value": 2.0585446382558366, "vs_vwap_pct": -2.348486273137015}, {"time": 1785233460, "value": 2.0583857159798535, "vs_vwap_pct": -2.8364808173020273}, {"time": 1785233520, "value": 2.057677276434138, "vs_vwap_pct": -3.2890131610637927}, {"time": 1785233580, "value": 2.057443228637961, "vs_vwap_pct": -3.7640517881618054}, {"time": 1785233640, "value": 2.0573262459677704, "vs_vwap_pct": -3.2725118876855612}, {"time": 1785233700, "value": 2.057154595124998, "vs_vwap_pct": -3.2644408584624336}, {"time": 1785233760, "value": 2.0567003837071955, "vs_vwap_pct": -3.7292930129639683}, {"time": 1785233820, "value": 2.056467177222287, "vs_vwap_pct": -1.894860158911985}, {"time": 1785233880, "value": 2.056323688419588, "vs_vwap_pct": -2.252743022923144}, {"time": 1785233940, "value": 2.055878433566613, "vs_vwap_pct": -1.2587531025226277}, {"time": 1785234000, "value": 2.0559334773499924, "vs_vwap_pct": 0.19779446634864803}, {"time": 1785234060, "value": 2.0559556415870026, "vs_vwap_pct": 0.19671428367372648}, {"time": 1785234120, "value": 2.0558829619674093, "vs_vwap_pct": 0.20025644011616872}, {"time": 1785234180, "value": 2.0557949976888215, "vs_vwap_pct": -0.7683157954260309}, {"time": 1785234240, "value": 2.055785329868495, "vs_vwap_pct": -0.8943214839299947}, {"time": 1785234300, "value": 2.0557575581170826, "vs_vwap_pct": -1.252947265857301}, {"time": 1785234360, "value": 2.0557444348426577, "vs_vwap_pct": -0.27943331599472476}, {"time": 1785234420, "value": 2.0557662160869836, "vs_vwap_pct": 0.21081112624106021}, {"time": 1785234480, "value": 2.055827423715899, "vs_vwap_pct": 0.6893855058360816}, {"time": 1785234540, "value": 2.055838267605292, "vs_vwap_pct": 0.6888544015285643}, {"time": 1785234600, "value": 2.0558282779244053, "vs_vwap_pct": 0.44613269377024994}, {"time": 1785234660, "value": 2.055678538212186, "vs_vwap_pct": -0.27623668324740114}, {"time": 1785234720, "value": 2.0556308634008493, "vs_vwap_pct": -0.7603925237330543}, {"time": 1785234780, "value": 2.0556422291068186, "vs_vwap_pct": 0.2119907263762974}, {"time": 1785234840, "value": 2.055652627619808, "vs_vwap_pct": 0.21148380430529434}, {"time": 1785234900, "value": 2.0556475573312776, "vs_vwap_pct": -0.13852361612875058}, {"time": 1785234960, "value": 2.05558397987508, "vs_vwap_pct": -0.27164931862426983}, {"time": 1785235020, "value": 2.0555529598388764, "vs_vwap_pct": -0.7566314341079055}, {"time": 1785235080, "value": 2.055525038993669, "vs_vwap_pct": -0.7552833801173068}, {"time": 1785235140, "value": 2.0554985473943685, "vs_vwap_pct": -0.7540042980820924}, {"time": 1785235200, "value": 2.055408196754366, "vs_vwap_pct": -1.2361630548368716}, {"time": 1785235260, "value": 2.0553999250352235, "vs_vwap_pct": -1.2357655912042724}, {"time": 1785235320, "value": 2.0553858067710356, "vs_vwap_pct": -0.7485605242748207}, {"time": 1785235380, "value": 2.0553791352651394, "vs_vwap_pct": -0.2665754055361921}, {"time": 1785235440, "value": 2.0553524610069402, "vs_vwap_pct": -0.7469502821632289}, {"time": 1785235500, "value": 2.0553284921781665, "vs_vwap_pct": -0.7457928129980743}, {"time": 1785235560, "value": 2.055313840342037, "vs_vwap_pct": -0.7450852537191249}, {"time": 1785235620, "value": 2.0552937111435705, "vs_vwap_pct": -0.7441131678966223}, {"time": 1785235680, "value": 2.055137200172372, "vs_vwap_pct": -1.223139757786664}, {"time": 1785235740, "value": 2.055003460736395, "vs_vwap_pct": -1.7033285541938554}, {"time": 1785235800, "value": 2.0549362523776953, "vs_vwap_pct": -2.18674678232482}, {"time": 1785235860, "value": 2.054898230312858, "vs_vwap_pct": -1.2116527205859353}, {"time": 1785235920, "value": 2.054853764139011, "vs_vwap_pct": -1.209514982173206}, {"time": 1785235980, "value": 2.054795451372974, "vs_vwap_pct": -1.693377866381998}, {"time": 1785236040, "value": 2.0547663250165655, "vs_vwap_pct": -2.1786577126333255}, {"time": 1785236100, "value": 2.054747829231684, "vs_vwap_pct": -1.204421724145977}, {"time": 1785236160, "value": 2.054689855198144, "vs_vwap_pct": -1.2016341607801093}, {"time": 1785236220, "value": 2.054670538677302, "vs_vwap_pct": -0.7140092974100969}, {"time": 1785236280, "value": 2.054655807379951, "vs_vwap_pct": -1.1999969674430047}, {"time": 1785236340, "value": 2.0546488048532345, "vs_vwap_pct": -1.1996602433959713}, {"time": 1785236400, "value": 2.0545939975632, "vs_vwap_pct": -1.6837388605354382}], "volume": [{"time": 1785229200, "value": 378120.0, "color": "#26a69a"}, {"time": 1785229260, "value": 499121.0, "color": "#26a69a"}, {"time": 1785229320, "value": 511808.0, "color": "#ef5350"}, {"time": 1785229380, "value": 115100.0, "color": "#ef5350"}, {"time": 1785229440, "value": 160230.0, "color": "#ef5350"}, {"time": 1785229500, "value": 77572.0, "color": "#26a69a"}, {"time": 1785229560, "value": 124524.0, "color": "#ef5350"}, {"time": 1785229620, "value": 111557.0, "color": "#26a69a"}, {"time": 1785229680, "value": 104690.0, "color": "#ef5350"}, {"time": 1785229740, "value": 36955.0, "color": "#26a69a"}, {"time": 1785229800, "value": 45243.0, "color": "#26a69a"}, {"time": 1785229860, "value": 104104.0, "color": "#26a69a"}, {"time": 1785229920, "value": 114270.0, "color": "#26a69a"}, {"time": 1785229980, "value": 146036.0, "color": "#ef5350"}, {"time": 1785230040, "value": 64347.0, "color": "#26a69a"}, {"time": 1785230100, "value": 42242.0, "color": "#26a69a"}, {"time": 1785230160, "value": 76407.0, "color": "#ef5350"}, {"time": 1785230220, "value": 105581.0, "color": "#26a69a"}, {"time": 1785230280, "value": 19264.0, "color": "#26a69a"}, {"time": 1785230340, "value": 21426.0, "color": "#ef5350"}, {"time": 1785230400, "value": 69678.0, "color": "#ef5350"}, {"time": 1785230460, "value": 41252.0, "color": "#26a69a"}, {"time": 1785230520, "value": 16686.0, "color": "#26a69a"}, {"time": 1785230580, "value": 107091.0, "color": "#26a69a"}, {"time": 1785230640, "value": 82704.0, "color": "#26a69a"}, {"time": 1785230700, "value": 51838.0, "color": "#ef5350"}, {"time": 1785230760, "value": 29234.0, "color": "#26a69a"}, {"time": 1785230820, "value": 21333.0, "color": "#ef5350"}, {"time": 1785230880, "value": 16805.0, "color": "#26a69a"}, {"time": 1785230940, "value": 132985.0, "color": "#26a69a"}, {"time": 1785231000, "value": 110698.0, "color": "#ef5350"}, {"time": 1785231060, "value": 31839.0, "color": "#26a69a"}, {"time": 1785231120, "value": 28121.0, "color": "#26a69a"}, {"time": 1785231180, "value": 27608.0, "color": "#ef5350"}, {"time": 1785231240, "value": 38446.0, "color": "#ef5350"}, {"time": 1785231300, "value": 26695.0, "color": "#26a69a"}, {"time": 1785231360, "value": 18347.0, "color": "#26a69a"}, {"time": 1785231420, "value": 15045.0, "color": "#26a69a"}, {"time": 1785231480, "value": 15273.0, "color": "#26a69a"}, {"time": 1785231540, "value": 23506.0, "color": "#26a69a"}, {"time": 1785231600, "value": 31210.0, "color": "#ef5350"}, {"time": 1785231660, "value": 16121.0, "color": "#ef5350"}, {"time": 1785231720, "value": 7258.0, "color": "#26a69a"}, {"time": 1785231780, "value": 11275.0, "color": "#26a69a"}, {"time": 1785231840, "value": 22416.0, "color": "#ef5350"}, {"time": 1785231900, "value": 53879.0, "color": "#ef5350"}, {"time": 1785231960, "value": 31409.0, "color": "#26a69a"}, {"time": 1785232020, "value": 4760.0, "color": "#26a69a"}, {"time": 1785232080, "value": 6122.0, "color": "#ef5350"}, {"time": 1785232140, "value": 21817.0, "color": "#ef5350"}, {"time": 1785232200, "value": 12894.0, "color": "#26a69a"}, {"time": 1785232260, "value": 29432.0, "color": "#26a69a"}, {"time": 1785232320, "value": 21368.0, "color": "#26a69a"}, {"time": 1785232380, "value": 45548.0, "color": "#26a69a"}, {"time": 1785232440, "value": 14419.0, "color": "#26a69a"}, {"time": 1785232500, "value": 8471.0, "color": "#26a69a"}, {"time": 1785232560, "value": 4959.0, "color": "#26a69a"}, {"time": 1785232620, "value": 19860.0, "color": "#ef5350"}, {"time": 1785232680, "value": 7858.0, "color": "#26a69a"}, {"time": 1785232740, "value": 9021.0, "color": "#26a69a"}, {"time": 1785232800, "value": 10497.0, "color": "#26a69a"}, {"time": 1785232860, "value": 50368.0, "color": "#26a69a"}, {"time": 1785232920, "value": 19776.0, "color": "#ef5350"}, {"time": 1785232980, "value": 10745.0, "color": "#26a69a"}, {"time": 1785233040, "value": 8875.0, "color": "#26a69a"}, {"time": 1785233100, "value": 6809.0, "color": "#26a69a"}, {"time": 1785233160, "value": 21936.0, "color": "#26a69a"}, {"time": 1785233220, "value": 7840.0, "color": "#ef5350"}, {"time": 1785233280, "value": 7446.0, "color": "#26a69a"}, {"time": 1785233340, "value": 10201.0, "color": "#26a69a"}, {"time": 1785233400, "value": 9024.0, "color": "#ef5350"}, {"time": 1785233460, "value": 10010.0, "color": "#ef5350"}, {"time": 1785233520, "value": 39376.0, "color": "#ef5350"}, {"time": 1785233580, "value": 13167.0, "color": "#26a69a"}, {"time": 1785233640, "value": 7593.0, "color": "#26a69a"}, {"time": 1785233700, "value": 9739.0, "color": "#ef5350"}, {"time": 1785233760, "value": 25981.0, "color": "#26a69a"}, {"time": 1785233820, "value": 26412.0, "color": "#26a69a"}, {"time": 1785233880, "value": 13752.0, "color": "#26a69a"}, {"time": 1785233940, "value": 76624.0, "color": "#26a69a"}, {"time": 1785234000, "value": 61318.0, "color": "#26a69a"}, {"time": 1785234060, "value": 25162.0, "color": "#26a69a"}, {"time": 1785234120, "value": 21125.0, "color": "#ef5350"}, {"time": 1785234180, "value": 15815.0, "color": "#ef5350"}, {"time": 1785234240, "value": 2447.0, "color": "#26a69a"}, {"time": 1785234300, "value": 5020.0, "color": "#26a69a"}, {"time": 1785234360, "value": 10648.0, "color": "#26a69a"}, {"time": 1785234420, "value": 23479.0, "color": "#26a69a"}, {"time": 1785234480, "value": 68872.0, "color": "#ef5350"}, {"time": 1785234540, "value": 12413.0, "color": "#ef5350"}, {"time": 1785234600, "value": 14336.0, "color": "#ef5350"}, {"time": 1785234660, "value": 27936.0, "color": "#ef5350"}, {"time": 1785234720, "value": 14697.0, "color": "#26a69a"}, {"time": 1785234780, "value": 12606.0, "color": "#26a69a"}, {"time": 1785234840, "value": 11591.0, "color": "#26a69a"}, {"time": 1785234900, "value": 4361.0, "color": "#ef5350"}, {"time": 1785234960, "value": 12082.0, "color": "#ef5350"}, {"time": 1785235020, "value": 9721.0, "color": "#26a69a"}, {"time": 1785235080, "value": 8783.0, "color": "#26a69a"}, {"time": 1785235140, "value": 5083.0, "color": "#ef5350"}, {"time": 1785235200, "value": 12497.0, "color": "#ef5350"}, {"time": 1785235260, "value": 1599.0, "color": "#26a69a"}, {"time": 1785235320, "value": 4507.0, "color": "#26a69a"}, {"time": 1785235380, "value": 5986.0, "color": "#26a69a"}, {"time": 1785235440, "value": 8552.0, "color": "#26a69a"}, {"time": 1785235500, "value": 4666.0, "color": "#ef5350"}, {"time": 1785235560, "value": 4722.0, "color": "#26a69a"}, {"time": 1785235620, "value": 6502.0, "color": "#26a69a"}, {"time": 1785235680, "value": 17152.0, "color": "#ef5350"}, {"time": 1785235740, "value": 14751.0, "color": "#ef5350"}, {"time": 1785235800, "value": 7446.0, "color": "#26a69a"}, {"time": 1785235860, "value": 7614.0, "color": "#26a69a"}, {"time": 1785235920, "value": 8934.0, "color": "#26a69a"}, {"time": 1785235980, "value": 6512.0, "color": "#ef5350"}, {"time": 1785236040, "value": 3259.0, "color": "#26a69a"}, {"time": 1785236100, "value": 3746.0, "color": "#26a69a"}, {"time": 1785236160, "value": 11778.0, "color": "#26a69a"}, {"time": 1785236220, "value": 6620.0, "color": "#26a69a"}, {"time": 1785236280, "value": 2721.0, "color": "#ef5350"}, {"time": 1785236340, "value": 1018.0, "color": "#ef5350"}, {"time": 1785236400, "value": 6192.0, "color": "#ef5350"}], "markers": []}};
+// P5 (2026-08-05 review): bars_to_chart_json.to_unix()/_chart_unix() encode UK
+// wall-clock time as a "reinterpreted as UTC" unix timestamp -- a deliberate trick
+// that only shows the correct digits if this chart reads time back as literal UTC.
+// Lightweight Charts' default formatter uses the BROWSER's local timezone instead,
+// which silently adds the viewer's own UTC offset on top (+1h during BST, +0h during
+// GMT -- why this went unnoticed outside summer months). Force UTC everywhere time
+// is rendered so the trick's assumption actually holds regardless of viewer/DST.
+function utcHHMM(time) {
+  const d = new Date(time * 1000);
+  return String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
+}
+const chart = LightweightCharts.createChart(document.getElementById('chart'), {
+  layout: { background: { color: '#131722' }, textColor: '#d1d4dc' },
+  grid: { vertLines: { color: '#222633' }, horzLines: { color: '#222633' } },
+  timeScale: { timeVisible: true, secondsVisible: false, tickMarkFormatter: utcHHMM },
+  localization: { timeFormatter: utcHHMM },
+});
+
+chart.priceScale('right').applyOptions({ scaleMargins: { top: 0.1, bottom: 0.3 } });
+
+const candleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
+  upColor: '#26a69a', downColor: '#ef5350',
+  borderVisible: false,
+  wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+  priceLineVisible: false,
+});
+
+const vwapSeries = chart.addSeries(LightweightCharts.LineSeries, {
+  color: '#f0b90b', lineWidth: 2,
+  priceLineVisible: false,
+});
+
+const volumeSeries = chart.addSeries(LightweightCharts.HistogramSeries, {
+  priceFormat: { type: 'volume' },
+  priceScaleId: 'volume',
+  lastValueVisible: false,
+  priceLineVisible: false,
+});
+chart.priceScale('volume').applyOptions({ scaleMargins: { top: 0.75, bottom: 0 } });
+
+// Single persistent marker primitive, reused via setMarkers() on every switch --
+// never re-created/detached. Repeated createSeriesMarkers()/detachPrimitive() throws
+// once a ticker with zero markers is followed by another switch, which silently killed
+// the whole render() call (chart looked frozen on ticker switch).
+const markerPrimitive = LightweightCharts.createSeriesMarkers(candleSeries, []);
+let volumeByTime = new Map();
+let vwapPctByTime = new Map();
+let priceLines = [];
+
+function render(data) {
+  document.getElementById('title').textContent = `${data.symbol} — ${data.date}`;
+  // re-enable autoscale on switch -- a prior price-axis drag/scroll on any chart
+  // pins the right/volume price scales to that chart's range, and setData() alone
+  // doesn't undo it, so the next symbol renders with a stale price range (candles
+  // scaled off-screen even though tooltip data is correct) until a hard reload.
+  chart.priceScale('right').applyOptions({ autoScale: true });
+  chart.priceScale('volume').applyOptions({ autoScale: true });
+  candleSeries.setData(data.candles);
+  vwapSeries.setData(data.vwap);
+  volumeSeries.setData(data.volume || []);
+  volumeByTime = new Map((data.volume || []).map(v => [v.time, v.value]));
+  vwapPctByTime = new Map((data.vwap || []).map(v => [v.time, v.vs_vwap_pct]));
+  // drop reasoning text — arrow alone flags the candidate, text clutters the chart
+  markerPrimitive.setMarkers((data.markers || []).map(m => ({ ...m, text: '' })));
+  chart.timeScale().fitContent();
+  clearLines(); // manual lines don't carry meaning across a different ticker's price scale
+  endDrag();
+  if (drawMode) drawBtn.click(); // leave Draw off on a switch, pan/zoom restored
+  measureResult.textContent = '';
+}
+
+function clearLines() {
+  priceLines.forEach(l => candleSeries.removePriceLine(l));
+  priceLines = [];
+}
+document.getElementById('clearLines').addEventListener('click', () => {
+  clearLines();
+  endDrag();
+  measureResult.textContent = '';
+});
+
+// Tool switch: "Line" drops a single reference line per drag; "Range" drags out a
+// $/% readout between two prices (profit-target / stop-loss sizing from a breakout
+// point). Two separate drag handlers below, selected by `rangeTool`, not one shared
+// function with a branch buried inside.
+let rangeTool = false;
+const measureBtn = document.getElementById('measureToggle');
+const measureResult = document.getElementById('measureResult');
+measureBtn.addEventListener('click', () => {
+  rangeTool = !rangeTool;
+  endDrag();
+  measureResult.textContent = '';
+  measureBtn.textContent = `Tool: ${rangeTool ? 'Range' : 'Line'}`;
+});
+
+function addPriceLine(price, color) {
+  const line = candleSeries.createPriceLine({
+    price, color, lineWidth: 1,
+    lineStyle: LightweightCharts.LineStyle.Dashed,
+    axisLabelVisible: true,
+    title: price.toFixed(4),
+  });
+  priceLines.push(line);
+  return line;
+}
+
+// Drag state shared by both tools' handlers below.
+let hoverPoint = null;      // last {point} from crosshairMove, used to seed mousedown price
+let isDragging = false;
+let dragAnchorPrice = null; // range tool only
+let dragPreviewLine = null; // the line that tracks the cursor during a drag
+
+function endDrag() {
+  isDragging = false;
+  dragAnchorPrice = null;
+  dragPreviewLine = null;
+}
+
+function priceAtPoint(point) {
+  return point ? candleSeries.coordinateToPrice(point.y) : null;
+}
+
+function startLineDrag(price) {
+  dragPreviewLine = addPriceLine(price, '#e0e0e0');
+}
+
+function startRangeDrag(price) {
+  addPriceLine(price, '#4a90e2'); // anchor, fixed for this drag
+  dragAnchorPrice = price;
+  dragPreviewLine = addPriceLine(price, '#e0e0e0'); // tracks the cursor until mouseup
+  measureResult.textContent = `Anchor ${price.toFixed(4)} — drag to end point`;
+}
+
+function updateRangeDrag(price) {
+  const diff = price - dragAnchorPrice;
+  const pct = dragAnchorPrice ? (diff / dragAnchorPrice * 100) : 0;
+  const sign = diff >= 0 ? '+' : '';
+  dragPreviewLine.applyOptions({
+    price, title: price.toFixed(4),
+    color: diff >= 0 ? '#26a69a' : '#ef5350',
+  });
+  measureResult.textContent = `Range: ${sign}${diff.toFixed(4)} (${sign}${pct.toFixed(2)}%)`;
+}
+
+// Two ways in, one drag engine: a mouse user holds Shift and drags; a touch user
+// turns Draw on (a phone has no Shift key) and drags one finger. Both tools (Line and
+// Range) are driven by the same begin/update/finish below, so neither input can end up
+// supporting a tool the other doesn't (failure class 2 -- the touch path was the
+// missing sibling until 2026-09-22).
+const chartEl = document.getElementById('chart');
+
+function priceAtClientY(clientY) {
+  // The chart container's top edge IS the top of the price pane, so a page-space y
+  // maps onto the series the same way the crosshair's own point.y does.
+  const rect = chartEl.getBoundingClientRect();
+  return candleSeries.coordinateToPrice(clientY - rect.top);
+}
+
+function beginDrag(price) {
+  if (price === null || price === undefined) return;
+  isDragging = true;
+  if (rangeTool) startRangeDrag(price); else startLineDrag(price);
+}
+
+function updateDrag(price) {
+  if (price === null || price === undefined || !dragPreviewLine) return;
+  if (rangeTool) updateRangeDrag(price);
+  else dragPreviewLine.applyOptions({ price, title: price.toFixed(4) });
+}
+
+function finishDrag() {
+  if (!isDragging) return;
+  if (rangeTool && dragAnchorPrice !== null) {
+    measureResult.textContent += ' — drag a new range to remeasure';
+  }
+  endDrag();
+}
+
+// Draw mode: while on, the chart's own pan/zoom is switched off and a plain drag
+// (finger or mouse) draws instead. Turning it off hands pan/zoom straight back.
+let drawMode = false;
+const drawBtn = document.getElementById('drawToggle');
+drawBtn.addEventListener('click', () => {
+  drawMode = !drawMode;
+  endDrag();
+  drawBtn.textContent = `Draw: ${drawMode ? 'ON' : 'off'}`;
+  drawBtn.classList.toggle('on', drawMode);
+  chartEl.classList.toggle('drawing', drawMode);
+  chart.applyOptions({ handleScroll: !drawMode, handleScale: !drawMode });
+});
+
+// Capture phase + stopPropagation so LWC's own mousedown/touchstart handlers (the
+// ones that pan the chart) never see the event while we're drawing -- otherwise both
+// fire and fight each other. passive:false is required to preventDefault a touch.
+chartEl.addEventListener('mousedown', e => {
+  if (!e.shiftKey && !drawMode) return;
+  e.stopPropagation();
+  e.preventDefault();
+  beginDrag(priceAtClientY(e.clientY));
+}, true);
+window.addEventListener('mouseup', finishDrag);
+
+chartEl.addEventListener('touchstart', e => {
+  if (!drawMode) return;
+  if (e.touches.length > 1) { endDrag(); return; }  // two fingers: not a draw
+  e.stopPropagation();
+  e.preventDefault();
+  beginDrag(priceAtClientY(e.touches[0].clientY));
+}, { capture: true, passive: false });
+chartEl.addEventListener('touchmove', e => {
+  if (!isDragging) return;
+  if (e.touches.length > 1) { endDrag(); return; }
+  e.stopPropagation();
+  e.preventDefault();
+  updateDrag(priceAtClientY(e.touches[0].clientY));
+}, { capture: true, passive: false });
+chartEl.addEventListener('touchend', finishDrag, { capture: true });
+chartEl.addEventListener('touchcancel', () => endDrag(), { capture: true });
+
+const tooltip = document.getElementById('tooltip');
+chart.subscribeCrosshairMove(param => {
+  hoverPoint = param.point || null;
+
+  if (isDragging) updateDrag(priceAtPoint(hoverPoint));
+
+  if (!param.time || !param.point) {
+    tooltip.style.display = 'none';
+    return;
+  }
+  const bar = param.seriesData.get(candleSeries);
+  if (!bar) {
+    tooltip.style.display = 'none';
+    return;
+  }
+  const vol = volumeByTime.get(param.time);
+  const volText = vol === undefined ? 'n/a' : vol.toLocaleString();
+  const vwapPct = vwapPctByTime.get(param.time);
+  const vwapText = vwapPct === undefined ? 'n/a' : `${vwapPct.toFixed(2)}%`;
+  // body/lower-wick size, both $ and %-of-close (matches the manual review metric
+  // used throughout strategy_knowledge/08_open_questions.md Q25/Q26)
+  const body = Math.abs(bar.close - bar.open);
+  const lowerWick = Math.min(bar.open, bar.close) - bar.low;
+  const bodyPct = bar.close ? (body / bar.close * 100) : 0;
+  const wickPct = bar.close ? (lowerWick / bar.close * 100) : 0;
+  tooltip.innerHTML =
+    `O ${bar.open} H ${bar.high} L ${bar.low} C ${bar.close} &nbsp; Vol ${volText} &nbsp; vs VWAP ${vwapText}` +
+    `<br>Body $${body.toFixed(4)} (${bodyPct.toFixed(2)}%) &nbsp; Wick $${lowerWick.toFixed(4)} (${wickPct.toFixed(2)}%)`;
+  tooltip.style.display = 'block';
+});
+
+const picker = document.getElementById('chartPicker');
+Object.keys(DATA).sort().forEach(key => {
+  const opt = document.createElement('option');
+  opt.value = key;
+  opt.textContent = key;
+  picker.appendChild(opt);
+});
+picker.addEventListener('change', () => render(DATA[picker.value]));
+if (picker.options.length) { picker.selectedIndex = 0; render(DATA[picker.value]); }
+
+new ResizeObserver(entries => {
+  const { width, height } = entries[0].contentRect;
+  chart.applyOptions({ width, height });
+}).observe(document.getElementById('chart'));
+</script>
+</body>
+</html>
