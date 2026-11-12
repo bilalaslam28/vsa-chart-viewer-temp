@@ -34,6 +34,12 @@
   <p style="margin:0 0 8px;font-size:14px;"><a href="../../index.html">&larr; All days</a></p>
   <div id="controls">
     <select id="chartPicker"></select>
+    <select id="tfPicker" aria-label="Candle size">
+      <option value="1">1 min</option>
+      <option value="2">2 min</option>
+      <option value="3">3 min</option>
+      <option value="5">5 min</option>
+    </select>
     <button id="clearLines">Clear lines</button>
     <button id="measureToggle">Tool: Line</button>
     <button id="drawToggle">Draw: off</button>
@@ -101,8 +107,54 @@ let volumeByTime = new Map();
 let vwapPctByTime = new Map();
 let priceLines = [];
 
-function render(data) {
-  document.getElementById('title').textContent = `${data.symbol} — ${data.date}`;
+// Candle-size drop-down (Bilal 2026-11-12): the page only holds 1-minute bars, so
+// 2/3/5-minute candles are built here. Buckets follow the CLOCK (09:00-09:04 is one
+// 5-minute candle even if 09:03 had no trades), never "every N bars". Volume is
+// summed; VWAP is a running session VWAP, so a bucket's value is the one at its last
+// minute; arrows move to the start of the candle they fall in. The 1-minute data in
+// DATA is never changed. Pinned by scripts/test_chart_viewer_timeframes.py.
+let tfMinutes = 1;
+
+function bucketStart(time, minutes) {
+  const size = minutes * 60;
+  return Math.floor(time / size) * size;
+}
+
+function resample(data, minutes) {
+  if (minutes === 1) return data;
+  const vwapAt = new Map((data.vwap || []).map(v => [v.time, v.value]));
+  const volAt = new Map((data.volume || []).map(v => [v.time, v.value]));
+  const buckets = [];
+  let cur = null;
+  for (const c of data.candles) {
+    const t = bucketStart(c.time, minutes);
+    if (!cur || cur.time !== t) {
+      cur = { time: t, open: c.open, high: c.high, low: c.low, close: c.close, vol: 0, hasVol: false, vwap: null };
+      buckets.push(cur);
+    } else {
+      cur.high = Math.max(cur.high, c.high);
+      cur.low = Math.min(cur.low, c.low);
+      cur.close = c.close;
+    }
+    if (volAt.has(c.time)) { cur.vol += volAt.get(c.time); cur.hasVol = true; }
+    const w = vwapAt.get(c.time);
+    if (typeof w === 'number') cur.vwap = w;
+  }
+  const candles = buckets.map(b => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close }));
+  const volume = buckets.filter(b => b.hasVol).map(b => ({
+    time: b.time, value: b.vol, color: b.close >= b.open ? '#26a69a' : '#ef5350',
+  }));
+  // vs-VWAP % uses the body top, same as bars_to_chart_json (R9)
+  const vwap = buckets.filter(b => b.vwap !== null).map(b => ({
+    time: b.time, value: b.vwap,
+    vs_vwap_pct: b.vwap ? (Math.max(b.open, b.close) - b.vwap) / b.vwap * 100 : null,
+  }));
+  const markers = (data.markers || []).map(mk => ({ ...mk, time: bucketStart(mk.time, minutes) }));
+  return { ...data, candles, vwap, volume, markers };
+}
+
+function render(data, keepLines) {
+  document.getElementById('title').textContent = `${data.symbol} — ${data.date} · ${tfMinutes}-min candles`;
   // re-enable autoscale on switch -- a prior price-axis drag/scroll on any chart
   // pins the right/volume price scales to that chart's range, and setData() alone
   // doesn't undo it, so the next symbol renders with a stale price range (candles
@@ -117,8 +169,10 @@ function render(data) {
   // drop reasoning text — arrow alone flags the candidate, text clutters the chart
   markerPrimitive.setMarkers((data.markers || []).map(m => ({ ...m, text: '' })));
   chart.timeScale().fitContent();
-  clearLines(); // manual lines don't carry meaning across a different ticker's price scale
   endDrag();
+  // a candle-size change keeps the same stock and prices, so drawn lines stay
+  if (keepLines) return;
+  clearLines(); // manual lines don't carry meaning across a different ticker's price scale
   if (drawMode) drawBtn.click(); // leave Draw off on a switch, pan/zoom restored
   measureResult.textContent = '';
 }
@@ -309,8 +363,15 @@ Object.keys(DATA).sort().forEach(key => {
   opt.textContent = key;
   picker.appendChild(opt);
 });
-picker.addEventListener('change', () => render(DATA[picker.value]));
-if (picker.options.length) { picker.selectedIndex = 0; render(DATA[picker.value]); }
+const currentData = () => resample(DATA[picker.value], tfMinutes);
+picker.addEventListener('change', () => render(currentData()));
+const tfPicker = document.getElementById('tfPicker');
+tfPicker.addEventListener('change', () => {
+  tfMinutes = parseInt(tfPicker.value, 10) || 1;
+  if (DATA[picker.value]) render(currentData(), true);
+});
+tfMinutes = parseInt(tfPicker.value, 10) || 1; // a browser may restore the last choice on reload
+if (picker.options.length) { picker.selectedIndex = 0; render(currentData()); }
 
 new ResizeObserver(entries => {
   const { width, height } = entries[0].contentRect;
